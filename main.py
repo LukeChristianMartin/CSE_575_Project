@@ -1,7 +1,9 @@
 import re
+import random
 import openml
 import numpy as np
 import pandas as pd
+import matplotlib.pyplot as plt
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.model_selection import RandomizedSearchCV, train_test_split
 from sklearn.metrics import accuracy_score, classification_report, confusion_matrix
@@ -33,7 +35,7 @@ def cross_validate_model_with_random_search(model_type, param_distributions, num
     # Create a Randomized Search Cross Validation object
     model_search = RandomizedSearchCV(model_type, param_distributions=param_distributions,
                                       n_iter=num_of_searches, cv=5,
-                                      random_state=42, n_jobs=-1)
+                                      random_state=random.randint(1, 1000), n_jobs=-1)
 
     # Perform the random search for hyperparameter tuning
     model_search.fit(X_train, y_train)
@@ -56,30 +58,55 @@ def evaluate_model_on_test_dataset(model, x_test, y_test):
     test_accuracy = accuracy_score(y_test, y_pred)
     print("Test Accuracy:", test_accuracy)
 
+    return test_accuracy
+
 
 
 if __name__ == '__main__':
 
     # Replace this with your OpenML dataset link
-    openml_link = "https://www.openml.org/d/44123"
+    openml_link = "https://www.openml.org/d/44127"
 
     openML_features, openML_classification = get_openml_df_from_link(openml_link)
 
     # Split the data into test and training data
-    X_train, X_test, y_train, y_test = train_test_split(openML_features, openML_classification, test_size=0.3, random_state=42)
+    X_train, X_test, y_train, y_test = train_test_split(openML_features, openML_classification, test_size=0.3, random_state=random.randint(1, 1000))
 
-    rf_classifier = RandomForestClassifier(random_state=42)
+    rf_classifier = RandomForestClassifier(random_state=random.randint(1, 1000))
 
     # The hyperparameters for Random Forest
     rf_hyperparameters_dist = {
-        'n_estimators': np.arange(50, 200, 10),
-        'max_depth': np.arange(1, 20),
-        'min_samples_split': np.arange(2, 11),
-        'min_samples_leaf': np.arange(1, 11),
+        'n_estimators': np.arange(10, 200, 5),
+        'max_depth': np.arange(1, 40, 2),
+        'min_samples_split': np.arange(2, 20),
+        'min_samples_leaf': np.arange(1, 20),
         'bootstrap': [True, False]
     }
 
-    best_model = cross_validate_model_with_random_search(rf_classifier, rf_hyperparameters_dist, 3)
+    number_of_random_searches = 20
+    list_of_model = []
+    num_rand_walks = [i for i in range(1, number_of_random_searches + 1)]
 
-    evaluate_model_on_test_dataset(best_model, X_test, y_test)
+
+    for i in range(1, number_of_random_searches + 1):
+        print("Iteration: " + str(i))
+        best_model = cross_validate_model_with_random_search(rf_classifier, rf_hyperparameters_dist, i)
+
+        list_of_model.append(evaluate_model_on_test_dataset(best_model, X_test, y_test))
+
+        print("\n\n")
+    plt.semilogx(num_rand_walks, list_of_model, label='Data Points', color='blue', marker='o')
+
+    # Add labels and a title
+    plt.xlabel('# of Random Search Iterations')
+    plt.ylabel('Test Accuracy')
+    plt.title('Classification of Dataset 44127 (Phoneme) ')
+
+    # Add a legend (if needed)
+    plt.legend()
+
+    # Show the plot
+    plt.show()
+
+
 
